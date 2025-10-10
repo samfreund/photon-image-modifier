@@ -39,7 +39,7 @@ if [[ "$base_image" == *.yaml ]]; then
 elif [[ "$base_image" == *.tar.xz ]]; then
   # Directly download the tar.xz file
   wget -nv -O base_image.tar.xz "${base_image}"
-  tar -xJf base_image.tar.xz
+  tar -xJvf base_image.tar.xz
 else
   echo "Error: base_image must be a .yaml manifest or .tar.xz"
   exit 1
@@ -48,7 +48,7 @@ fi
 ROOTFS_IMG_XZ=""
 
 # First try to find a file with "rootfs" in the name
-for file in *.img.xz; do
+for file in **/*.img.xz; do
   if [[ "$file" == *"rootfs"* ]]; then
     ROOTFS_IMG_XZ="$file"
     echo "Found rootfs image by name: $ROOTFS_IMG_XZ"
@@ -58,7 +58,7 @@ done
 
 # If not found, use the largest .img.xz file
 if [ -z "$ROOTFS_IMG_XZ" ]; then
-  ROOTFS_IMG_XZ=$(ls -S *.img.xz 2>/dev/null | head -n1)
+  ROOTFS_IMG_XZ=$(ls -S **/*.img.xz 2>/dev/null | head -n1)
   echo "Using largest .img.xz file as rootfs: $ROOTFS_IMG_XZ"
 fi
 
