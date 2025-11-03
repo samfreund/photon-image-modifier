@@ -76,7 +76,7 @@ jobs:
     - name: Install dependencies and build image
       run: |
           chmod +x mount.sh
-          ./mount.sh ${{ matrix.base_image }} ${{ matrix.script}} ./install_common.sh
+          ./mount.sh ${{ matrix.base_image }} ${{ matrix.script}} install_common.sh ${{ github.ref_name }} ${{ matrix.name }}
 
     - name: Compress built image
       run: |

@@ -226,11 +226,11 @@ sudo chroot rootfs /bin/bash -c "
   echo '=== Running ${scriptOne} ==='
   ./tmp/build/${scriptOne}
 
-  if [ -f "${scriptTwo}" ]; then
+  if [ -f "/tmp/build/${scriptTwo}" ]; then
     echo '=== Making second script executable ==='
     chmod +x /tmp/build/${scriptTwo}
     echo '=== Running ${scriptTwo} ==='
-    ./tmp/build/${scriptTwo}
+    ./tmp/build/${scriptTwo} $(printf '%q ' "${@:4}")
   else
     echo 'No second script provided, skipping.'
   fi
