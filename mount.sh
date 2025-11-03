@@ -151,7 +151,7 @@ if [ "$ImgType" == "Canonical" ]; then
 
   # Expand the image by 2GB (reduced from 10GB to fit GitHub Actions disk space)
   echo "=== Expanding image by 2GB ==="
-  dd if=/dev/zero bs=1M count=4096 >> "$ROOTFS_IMG"
+  dd if=/dev/zero bs=1M count=2048 >> "$ROOTFS_IMG"
 
   if [ "$rubik" != true ]; then
   # Get the partition number (usually 2 for root partition)
