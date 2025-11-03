@@ -1,7 +1,6 @@
-
 base_image=$1
-script=$2
-
+scriptOne=$2
+scriptTwo=$3
 set -exv
 
 # Install required packages
@@ -10,6 +9,8 @@ sudo apt-get install -y wget xz-utils
 # If base_image ends with .yaml, treat it as a manifest and skip download
 if [[ "$base_image" == *.yaml ]]; then
  
+  # We're building a rubik image
+  rubik=true
   # Download and process manifest
   wget -O manifest.yaml "${base_image}"
 
@@ -36,11 +37,18 @@ if [[ "$base_image" == *.yaml ]]; then
   ls -lh
   echo "========================"
 elif [[ "$base_image" == *.tar.xz ]]; then
+  # We're building a rubik image
+  rubik=true
   # Directly download the tar.xz file
   wget -nv -O base_image.tar.xz "${base_image}"
   tar -I 'xz -T0' -xf base_image.tar.xz
+elif [[ "$base_image" == *.img.xz ]]; then
+  # We're building a standard image
+  rubik=false
+  wget -nv -O base_image.img.xz "${base_image}"
+  xz -T0 -d base_image.img.xz
 else
-  echo "Error: base_image must be a .yaml manifest or .tar.xz"
+  echo "Error: base_image must be a .yaml manifest, .tar.xz, or .img.xz file"
   exit 1
 fi
 # Find the rootfs image - look for the largest .img.xz or .img file
@@ -72,22 +80,51 @@ if [ ! -f "$ROOTFS_IMG" ]; then
   exit 1
 fi
 
-echo "Using rootfs image: $ROOTFS_IMG"
-
-# This uses a fixed offset for Ubuntu preinstalled server images
-echo "=== Mounting rootfs with fixed offset (rpiimager method) ==="
+# Make mount point
 mkdir -p ./rootfs
 
-# Calculate offset: 4096 bytes/sector * 139008 sectors = 569,376,768 bytes
-OFFSET=$((4096*139008))
-echo "Using offset: $OFFSET bytes (sector 139008)"
+echo "Using rootfs image: $ROOTFS_IMG"
+if [ "$rubik" == true ]; then
+  echo "Building Rubik image"
 
-sudo mount -o rw,loop,offset=$OFFSET "$ROOTFS_IMG" ./rootfs
+  # This uses a fixed offset for Ubuntu preinstalled server images
+  echo "=== Mounting rootfs with fixed offset (rpiimager method) ==="
 
-if [ $? -ne 0 ]; then
-  echo "Error: Failed to mount image with fixed offset"
-  exit 1
-fi
+  # Calculate offset: 4096 bytes/sector * 139008 sectors = 569,376,768 bytes
+  OFFSET=$((4096*139008))
+  echo "Using offset: $OFFSET bytes (sector 139008)"
+
+  sudo mount -o rw,loop,offset=$OFFSET "$ROOTFS_IMG" ./rootfs
+
+  if [ $? -ne 0 ]; then
+    echo "Error: Failed to mount image with fixed offset"
+    exit 1
+  fi
+else
+  echo "Building Standard image"
+
+  # Get partition info using parted
+  PART_INFO=$(parted -s "$ROOTFS_IMG" unit B print)
+
+  # Extract start byte of the root partition (assuming it's the second partition)
+  START_BYTE=$(echo "$PART_INFO" | awk '/^ 2/ {gsub("B","",$2); print $2}')
+
+  if [ -z "$START_BYTE" ]; then
+    echo "Error: Could not determine start byte of root partition"
+    exit 1
+  fi
+
+  OFFSET=$START_BYTE
+  echo "Using offset: $OFFSET bytes"
+
+  sudo mount -o rw,loop,offset=$OFFSET "$ROOTFS_IMG" ./rootfs
+
+  if [ $? -ne 0 ]; then
+    echo "Error: Failed to mount image with calculated offset"
+    exit 1
+  fi
+
+fi 
 
 echo "=== Mount successful ==="
 ls -la ./rootfs | head -20
@@ -133,16 +170,15 @@ sudo mount -t sysfs sysfs rootfs/sys
 sudo mount -t tmpfs tmpfs rootfs/run
 sudo mount --bind /dev rootfs/dev
 
-# Setup DNS resolution in chroot
-echo "=== Setting up DNS in chroot ==="
-sudo rm -f rootfs/etc/resolv.conf
-sudo cp /etc/resolv.conf rootfs/etc/resolv.conf
-sudo cp /etc/hosts rootfs/etc/hosts
+if [ "$rubik" == true ]; then
 
-# DEPRECATED: using bind mount instead
-# Copy repository into chroot (excluding mounted directories and problematic files)
-# sudo mkdir -p rootfs/tmp/build/
-# sudo rsync -av --exclude=rootfs --exclude=.git --exclude=*.img --exclude=*.xz . rootfs/tmp/build/
+  # Setup DNS resolution in chroot
+  echo "=== Setting up DNS in chroot ==="
+  sudo rm -f rootfs/etc/resolv.conf
+  sudo cp /etc/resolv.conf rootfs/etc/resolv.conf
+  sudo cp /etc/hosts rootfs/etc/hosts
+
+fi
 
 # Mount and bind the current directory into /tmp/build in chroot
 sudo mkdir -p rootfs/tmp/build/
@@ -162,9 +198,18 @@ sudo chroot rootfs /bin/bash -c "
   echo '=== Running installation scripts in chroot ==='
 
   echo '=== Making script executable ==='
-  chmod +x ${script}
-  echo '=== Running ${script} with arguments: ${@:3} ==='
-  ./${script} ${@:3}
+  chmod +x /tmp/build/${scriptOne}
+  echo '=== Running ${scriptOne} ==='
+  ./tmp/build/${scriptOne}
+
+  if [ -f "${scriptTwo}" ]; then
+    echo '=== Making second script executable ==='
+    chmod +x /tmp/build/${scriptTwo}
+    echo '=== Running ${scriptTwo} ==='
+    ./tmp/build/${scriptTwo}
+  else
+    echo 'No second script provided, skipping.'
+  fi
 "
 
 # Cleanup mounts
@@ -187,18 +232,35 @@ sudo losetup -j "$ROOTFS_IMG" | cut -d: -f1 | xargs -r sudo losetup -d
 sync
 sleep 3
 
-# Assembly process for remaining files
-mkdir -p photonvision_rubikpi3
-# Extract .tar.gz archive(s) directly into photonvision_rubikpi3 if they exist
-if ls *.tar.gz 1>/dev/null 2>&1; then
-  tar -xzf *.tar.gz -C photonvision_rubikpi3
-fi
-# Move all files (rawprogram, dtb, img) into photonvision_rubikpi3
-mv rawprogram*.xml photonvision_rubikpi3/ 2>/dev/null || true
-mv dtb.bin photonvision_rubikpi3/ 2>/dev/null || true
-mv *.img photonvision_rubikpi3/ 2>/dev/null || true
+if [ "$rubik" == true ]; then
+  # Assembly process for remaining files
+  mkdir -p photonvision_rubikpi3
+  # Extract .tar.gz archive(s) directly into photonvision_rubikpi3 if they exist
+  if ls *.tar.gz 1>/dev/null 2>&1; then
+    tar -xzf *.tar.gz -C photonvision_rubikpi3
+  fi
+  # Move all files (rawprogram, dtb, img) into photonvision_rubikpi3
+  mv rawprogram*.xml photonvision_rubikpi3/ 2>/dev/null || true
+  mv dtb.bin photonvision_rubikpi3/ 2>/dev/null || true
+  mv *.img photonvision_rubikpi3/ 2>/dev/null || true
 
-# Flatten directory structure - move all files from subdirectories to photonvision_rubikpi3 root
-find photonvision_rubikpi3 -mindepth 2 -type f -exec mv {} photonvision_rubikpi3/ \;
-# Remove empty subdirectories
-find photonvision_rubikpi3 -mindepth 1 -type d -empty -delete
+  # Flatten directory structure - move all files from subdirectories to photonvision_rubikpi3 root
+  find photonvision_rubikpi3 -mindepth 2 -type f -exec mv {} photonvision_rubikpi3/ \;
+  # Remove empty subdirectories
+  find photonvision_rubikpi3 -mindepth 1 -type d -empty -delete
+
+  # Export the final directory as an environment variable for GitHub Actions
+  FINAL_IMAGE="photonvision_rubikpi3"
+
+else
+  # Export the final image as an enivronment variable
+  FINAL_IMAGE="$ROOTFS_IMG"
+fi
+
+if [ -n "$GITHUB_ENV" ]; then
+  printf '%s\n' "FINAL_IMAGE=${FINAL_IMAGE}" >> "$GITHUB_ENV"
+  echo "Wrote FINAL_IMAGE to GITHUB_ENV"
+else
+  export FINAL_IMAGE="$FINAL_IMAGE"
+  echo "FINAL_IMAGE exported in current shell"
+fi

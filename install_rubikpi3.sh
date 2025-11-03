@@ -56,11 +56,3 @@ apt-get clean
 
 rm -rf /usr/share/doc
 rm -rf /usr/share/locale/
-
-echo '=== Running install_common.sh ==='
-chmod +x ./install_common.sh
-./install_common.sh
-echo '=== Creating version file ==='
-mkdir -p /opt/photonvision/
-echo '{$1};rubikpi3' > /opt/photonvision/image-version
-echo '=== Installation complete ==='
