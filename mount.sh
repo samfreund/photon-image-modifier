@@ -154,11 +154,20 @@ if [ "$ImgType" == "Canonical" ]; then
   dd if=/dev/zero bs=1M count=2048 >> "$ROOTFS_IMG"
 
   if [ "$rubik" != true ]; then
-  # Get the partition number (usually 2 for root partition)
-  PART_NUM=2
-  
-  # Extend the partition to use all available space
-  parted -s "$ROOTFS_IMG" resizepart $PART_NUM 100%
+    loopdev=$(sudo losetup --find --show --partscan ${ROOTFS_IMG})
+    echo "Created loopback device ${loopdev}"
+
+    if ( (parted --script $loopdev print || false) | grep "Partition Table: gpt" > /dev/null); then
+      sgdisk -e "${loopdev}"
+    fi
+    parted --script "${loopdev}" resizepart 2 100%
+    e2fsck -p -f "${loopdev}p2"
+    resize2fs "${loopdev}p2"
+    echo "Finished resizing disk image."
+    # Detach loop device
+    losetup -d "${loopdev}"
+fi
+
   fi
 
   # Remount after expansion
