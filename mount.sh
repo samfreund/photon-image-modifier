@@ -149,9 +149,15 @@ if [ "$ImgType" == "Canonical" ]; then
   echo "=== Unmounting for expansion ==="
   sudo umount ./rootfs
 
-  # Expand the image by 2GB (reduced from 10GB to fit GitHub Actions disk space)
-  echo "=== Expanding image by 2GB ==="
-  dd if=/dev/zero bs=1M count=2048 >> "$ROOTFS_IMG"
+  if [ "$rubik" = true ]; then
+    # Expand the image by 2GB (reduced from 10GB to fit GitHub Actions disk space)
+    echo "=== Expanding image by 2GB ==="
+    dd if=/dev/zero bs=1M count=2048 >> "$ROOTFS_IMG"
+  else
+    # Expand the image by 1GB
+    echo "=== Expanding image by 1GB ==="
+    dd if=/dev/zero bs=1M count=1024 >> "$ROOTFS_IMG"
+  fi
 
   if [ "$rubik" != true ]; then
     loopdev=$(sudo losetup --find --show --partscan ${ROOTFS_IMG})
