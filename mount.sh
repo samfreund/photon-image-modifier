@@ -157,16 +157,15 @@ if [ "$ImgType" == "Canonical" ]; then
     loopdev=$(sudo losetup --find --show --partscan ${ROOTFS_IMG})
     echo "Created loopback device ${loopdev}"
 
-    if ( (parted --script $loopdev print || false) | grep "Partition Table: gpt" > /dev/null); then
-      sgdisk -e "${loopdev}"
+    if ( (sudo parted --script $loopdev print || false) | grep "Partition Table: gpt" > /dev/null); then
+      sudo sgdisk -e "${loopdev}"
     fi
-    parted --script "${loopdev}" resizepart 2 100%
-    e2fsck -p -f "${loopdev}p2"
-    resize2fs "${loopdev}p2"
+    sudo parted --script "${loopdev}" resizepart 2 100%
+    sudo e2fsck -p -f "${loopdev}p2"
+    sudo resize2fs "${loopdev}p2"
     echo "Finished resizing disk image."
     # Detach loop device
-    losetup -d "${loopdev}"
-fi
+    sudo losetup -d "${loopdev}"
 
   fi
 
