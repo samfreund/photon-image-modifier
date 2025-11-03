@@ -192,15 +192,11 @@ sudo mount -t sysfs sysfs rootfs/sys
 sudo mount -t tmpfs tmpfs rootfs/run
 sudo mount --bind /dev rootfs/dev
 
-if [ "$rubik" == true ]; then
-
-  # Setup DNS resolution in chroot
-  echo "=== Setting up DNS in chroot ==="
-  sudo rm -f rootfs/etc/resolv.conf
-  sudo cp /etc/resolv.conf rootfs/etc/resolv.conf
-  sudo cp /etc/hosts rootfs/etc/hosts
-
-fi
+# Setup DNS resolution in chroot
+echo "=== Setting up DNS in chroot ==="
+sudo rm -f rootfs/etc/resolv.conf
+sudo cp /etc/resolv.conf rootfs/etc/resolv.conf
+sudo cp /etc/hosts rootfs/etc/hosts
 
 # Mount and bind the current directory into /tmp/build in chroot
 sudo mkdir -p rootfs/tmp/build/
