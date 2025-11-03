@@ -80,8 +80,15 @@ jobs:
 
     - name: Compress built image
       run: |
-        mv ${{ env.FINAL_IMAGE }} photonvision_${{ matrix.name }}.img
-        sudo xz -T 0 -v photonvision_${{ matrix.name }}.img
+        NAME=photonvision_${{ matrix.name }}
+        if [[ "${{ matrix.name }}" == rubik* ]]; then
+          TARGET="$NAME"
+          tar -I 'xz -T0' -cf photonvision_rubikpi3.tar.xz photonvision_rubikpi3 --checkpoint=10000 --checkpoint-action=echo='%T'
+        else
+          TARGET="${NAME}.img"
+          mv "${{ env.FINAL_IMAGE }}" "$TARGET"
+          sudo xz -T 0 -v "$TARGET"
+        fi
 
     - uses: actions/upload-artifact@v4.3.4
       with:
