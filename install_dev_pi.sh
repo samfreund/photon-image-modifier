@@ -7,7 +7,7 @@ set -ex
 cd /tmp/build
 
 chmod +x ./install.sh
-./install.sh --install-nm=yes --arch=aarch64
+./install.sh --install-nm=yes
 
 # and edit boot partition
 install -m 644 config.txt /boot/

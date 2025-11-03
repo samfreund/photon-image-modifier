@@ -48,7 +48,7 @@ echo "Freed up $freed KiB"
 
 # run Photonvision install script
 chmod +x ./install.sh
-./install.sh --install-nm=yes --arch=aarch64
+./install.sh --install-nm=yes
 
 echo "Installing additional things"
 apt-get install --yes --quiet libc6 libstdc++6
