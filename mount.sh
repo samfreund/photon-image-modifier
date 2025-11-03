@@ -159,11 +159,17 @@ if [ "$ImgType" == "Canonical" ]; then
   
   # Extend the partition to use all available space
   parted -s "$ROOTFS_IMG" resizepart $PART_NUM 100%
-fi
+  fi
 
   # Remount after expansion
   echo "=== Remounting after expansion ==="
   sudo mount -o rw,loop,offset=$OFFSET "$ROOTFS_IMG" ./rootfs
+
+  if [ "$rubik" != true ]; then
+    # Resize the filesystem to fill the partition
+    echo "=== Resizing filesystem ==="
+    sudo resize2fs "$(losetup -j "$ROOTFS_IMG" | cut -d: -f1 | head -n1)"
+  fi
 elif [ "$ImgType" == "CustomIDE" ]; then
   echo "Image already customized, no expansion needed"
 fi
