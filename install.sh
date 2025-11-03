@@ -216,7 +216,7 @@ DOWNLOAD_URL=$(curl -sk "$RELEASE_URL" |
                   cut -d : -f 2,3 |
                   tr -d '"'
               )
-
+echo $(curl -sk "$RELEASE_URL" | grep "browser_download_url.*$ARCH_NAME.jar")
 if [[ -z $DOWNLOAD_URL ]] ; then
   die "PhotonVision '$VERSION' is not available for $ARCH_NAME!" \
       "See ./install --list-versions for a list of available versions."
