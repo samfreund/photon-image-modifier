@@ -153,6 +153,14 @@ if [ "$ImgType" == "Canonical" ]; then
   echo "=== Expanding image by 2GB ==="
   dd if=/dev/zero bs=1M count=4096 >> "$ROOTFS_IMG"
 
+  if [ "$rubik" != true ]; then
+  # Get the partition number (usually 2 for root partition)
+  PART_NUM=2
+  
+  # Extend the partition to use all available space
+  parted -s "$ROOTFS_IMG" resizepart $PART_NUM 100%
+fi
+
   # Remount after expansion
   echo "=== Remounting after expansion ==="
   sudo mount -o rw,loop,offset=$OFFSET "$ROOTFS_IMG" ./rootfs
