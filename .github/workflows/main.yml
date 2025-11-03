@@ -91,9 +91,18 @@ jobs:
         fi
 
     - uses: actions/upload-artifact@v4.3.4
+      if: ${{ matrix.name == 'rubikpi3' }}
       with:
-        name: photonvision_${{ matrix.name }}.img.xz
-        path: photonvision_${{ matrix.name }}.img.xz
+        name: "photonvision_${{ matrix.name }}.tar.xz"
+        path: photonvision_${{ matrix.name }}.*.xz
+        if-no-files-found: error
+        retention-days: 1
+
+    - uses: actions/upload-artifact@v4.3.4
+      if: ${{ matrix.name != 'rubikpi3' }}
+      with:
+        name: "photonvision_${{ matrix.name }}.img.xz"
+        path: photonvision_${{ matrix.name }}.*.xz
         if-no-files-found: error
         retention-days: 1
 
