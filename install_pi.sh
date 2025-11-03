@@ -3,6 +3,8 @@
 # Verbose and exit on errors
 set -ex
 
+cd /tmp/build
+
 # Run normal photon installer
 chmod +x ./install.sh
 ./install.sh --install-nm=yes --arch=aarch64
