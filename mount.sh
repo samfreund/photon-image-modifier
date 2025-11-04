@@ -244,11 +244,6 @@ sudo umount rootfs/proc || true
 sudo umount rootfs/tmp/build/ || true
 sudo umount rootfs || true
 
-# More aggressive loop device cleanup
-if [ -n "$LOOP_DEV" ]; then
-  sudo losetup -d "$LOOP_DEV" || true
-fi
-
 # Find and detach any remaining loop devices pointing to our image
 sudo losetup -j "$ROOTFS_IMG" | cut -d: -f1 | xargs -r sudo losetup -d
 
