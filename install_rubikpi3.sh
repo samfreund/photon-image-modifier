@@ -19,7 +19,8 @@ echo "pi:raspberry" | chpasswd
 
 # Delete ubuntu user
 
-if grep -q "ubuntu" /etc/passwd; then
+cat /etc/passwd
+if grep  "ubuntu" /etc/passwd; then
     echo 'removing ubuntu user'
     sudo deluser --remove-home ubuntu
 fi
