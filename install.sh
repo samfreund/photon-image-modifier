@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Exit on errors
-set -e
+set -e +u
 
 needs_arg() {
     if [ -z "$OPTARG" ]; then
@@ -42,7 +42,7 @@ install_if_missing() {
 
   debug "Installing $1..."
   if [[ -z $TEST ]]; then
-    apt-get install --yes "$1"
+    apt-get --yes install "$1"
     # Always mark our upstream apt deps as held back, which will prevent the package 
     # from being automatically installed, upgraded or removed
     apt-mark manual "$1"
@@ -113,7 +113,7 @@ fi
 INSTALL_NETWORK_MANAGER="ask"
 VERSION="latest"
 
-while getopts "hlv:a:mnqt-:" OPT; do
+while getopts "hlva:mnqt-:" OPT; do
   if [ "$OPT" = "-" ]; then
     OPT="${OPTARG%%=*}"       # extract long option name
     OPTARG="${OPTARG#"$OPT"}" # extract long option argument (may be empty)
@@ -137,8 +137,8 @@ while getopts "hlv:a:mnqt-:" OPT; do
       exit 0
       ;;
     v | version)
-      needs_arg
-      VERSION=${OPTARG}
+      # needs_arg
+      VERSION=${OPTARG:-latest}
       ;;
     a | arch) needs_arg; ARCH=$OPTARG
       ;;
@@ -245,7 +245,7 @@ fi
 
 debug "Updating package list..."
 if [[ -z $TEST ]]; then
-  apt-get update
+  apt-get -q update
 fi
 debug "Updated package list."
 

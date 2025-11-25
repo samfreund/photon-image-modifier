@@ -1,10 +1,10 @@
-#!/bin/bash -v
-
+#!/bin/bash
+set +u
 # Verbose and exit on errors
-set -ex
+# set -ex
 
 # Create pi/raspberry login
-if id "$1" >/dev/null 2>&1; then
+if id "pi" >/dev/null 2>&1; then
     echo 'user found'
 else
     echo "creating pi user"
@@ -15,7 +15,14 @@ else
 fi
 echo "pi:raspberry" | chpasswd
 
-apt-get update --quiet
+# silence log spam from dpkg
+cat > /etc/apt/apt.conf.d/99dpkg.conf << EOF
+Dpkg::Progress-Fancy "0";
+APT::Color "0";
+Dpkg::Use-Pty "0";
+EOF
+
+apt-get -q update 
 
 before=$(df --output=used / | tail -n1)
 # clean up stuff
@@ -24,13 +31,13 @@ before=$(df --output=used / | tail -n1)
 echo "Purging snaps"
 rm -rf /var/lib/snapd/seed/snaps/*
 rm -f /var/lib/snapd/seed/seed.yaml
-apt-get purge --yes --quiet lxd-installer lxd-agent-loader
-apt-get purge --yes --quiet snapd
+apt-get --yes -q purge lxd-installer lxd-agent-loader
+apt-get --yes -q purge snapd
 
 # remove bluetooth daemon
-apt-get purge --yes --quiet bluez
+apt-get --yes -q purge bluez
 
-apt-get --yes --quiet autoremove
+apt-get --yes -q autoremove
 
 # remove firmware that (probably) isn't needed
 rm -rf /usr/lib/firmware/mrvl
@@ -46,19 +53,23 @@ echo "Freed up $freed KiB"
 
 # run Photonvision install script
 chmod +x ./install.sh
-./install.sh --install-nm=yes --arch=aarch64
+./install.sh --install-nm=yes --arch=aarch64 --version="$1"
 
 echo "Installing additional things"
-apt-get install --yes --quiet libc6 libstdc++6
+apt-get --yes -qq install libc6 libstdc++6
 
 # let netplan create the config during cloud-init
 rm -f /etc/netplan/00-default-nm-renderer.yaml
 
+mkdir --parents /mnt/CIDATA
+mount "${loopdev}p1" /mnt/CIDATA
 # set NetworkManager as the renderer in cloud-init
-cp -f ./OPi5_CIDATA/network-config /boot/network-config
-
+cp -f ./OPi5_CIDATA/network-config /mnt/CIDATA/network-config
 # add customized user-data file for cloud-init
-cp -f ./OPi5_CIDATA/user-data /boot/user-data
+cp -f ./OPi5_CIDATA/user-data /mnt/CIDATA/user-data
+
+umount /mnt/CIDATA
+rmdir /mnt/CIDATA
 
 # modify photonvision.service to enable big cores
 sed -i 's/# AllowedCPUs=4-7/AllowedCPUs=4-7/g' /lib/systemd/system/photonvision.service
@@ -86,7 +97,7 @@ for btservice in $btservices; do
 done
 
 rm -rf /var/lib/apt/lists/*
-apt-get --yes --quiet clean
+apt-get --yes -qq clean
 
 rm -rf /usr/share/doc
 rm -rf /usr/share/locale/

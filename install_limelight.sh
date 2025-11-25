@@ -3,9 +3,16 @@
 # Verbose and exit on errors
 set -ex
 
+# silence log spam from dpkg
+cat > /etc/apt/apt.conf.d/99dpkg.conf << EOF
+Dpkg::Progress-Fancy "0";
+APT::Color "0";
+Dpkg::Use-Pty "0";
+EOF
+
 # Run normal photon installer
 chmod +x ./install.sh
-./install.sh --install-nm=yes --arch=aarch64
+./install.sh --install-nm=yes --arch=aarch64 --version="$1"
 
 # edit boot partition
 install -m 644 limelight/config.txt /boot/
