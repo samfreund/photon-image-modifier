@@ -64,6 +64,7 @@ jobs:
             script: ./install_rubikpi3.sh
             base_image: https://people.canonical.com/~platform/images/qualcomm-iot/rubikpi3/ubuntu-server-24.04/x00/ubuntu-24.04-preinstalled-server-arm64+rubikpi3-20250912-127.yaml
             root_location: "offset=569376768"
+            shrink_image: "no"
 
     name: "Build for ${{ matrix.name }}"
 
@@ -80,39 +81,49 @@ jobs:
       with:
         minimum_free_mb: 2000
         image_url: ${{ matrix.base_image }}
-        root_location: ${{ contains('rubikpi3', matrix.name) && 'offset=569376768' || 'partition=2' }}
-        shrink_image: ${{ contains('rubikpi3', matrix.name) && 'no' || 'yes' }}
+        root_location: ${{ matrix.root_location || 'partition=2' }}
+        shrink_image: ${{ matrix.shrink_image || 'yes' }}
         commands: |
             echo "Running ${{ matrix.script }}"
             chmod +x "${{ matrix.script }}"
-            "./${{ matrix.script }}" "v2026.0.0-alpha-2"
+            "./${{ matrix.script }}"
             echo "Running install_common.sh"
             chmod +x "./install_common.sh"
             "./install_common.sh"
 
     - name: Compress built image 
-      if: ${{ ! endsWith(matrix.base_image, 'yaml') }}
+      # Compress the standard images
+      if: ${{ ! startsWith(matrix.name, 'rubik') }}
       run: |
         sudo mv ${{ steps.install_deps.outputs.image }} photonvision_${{ matrix.name }}.img
         sudo xz -T 0 -v photonvision_${{ matrix.name }}.img
         echo "artifact=photonvision_${{ matrix.name }}.img.xz" >> "$GITHUB_ENV"
 
     - name: Tar built image 
-      if: ${{ endsWith(matrix.base_image, 'yaml') }}
+      # Build the RubikPi3-specific tar file
+      if: ${{ startsWith(matrix.name, 'rubik') }}
       run: |
         imagedir=$(dirname ${{ steps.install_deps.outputs.image }})
         target=photonvision_${{ matrix.name }}
-        tardir=${RUNNER_TEMP}/${target}
+        tardir=${target}
         mkdir --parents ${tardir}
-        if ls ${imagedir}*.tar.gz 1>/dev/null 2>&1; then
-          sudo tar -xzf ${imagedir}*.tar.gz -C ${tardir}
+        echo "Contents of imagedir: ${imagedir}"
+        ls -la ${imagedir}
+        if ls ${imagedir}/*.tar.gz 1>/dev/null 2>&1; then
+          sudo tar -xzf ${imagedir}/*.tar.gz -C ${tardir} --strip-components=1
         fi
         sudo mv ${imagedir}/rawprogram*.xml ${tardir}/ 2>/dev/null || true
         sudo mv ${imagedir}/dtb.bin ${tardir}/ 2>/dev/null || true
         sudo mv ${imagedir}/*.img ${tardir}/ 2>/dev/null || true
         sudo find ${tardir} -mindepth 2 -type f -exec mv {} ${tardir}/ \;
         sudo find ${tardir} -mindepth 1 -type d -empty -delete
-        sudo tar -I 'xz -T0' -cf ${target}.tar.xz ${tardir} --checkpoint=10000 --checkpoint-action=echo='%T'
+        echo "Contents of tardir: ${tardir}"
+        ls -la ${tardir}
+        sudo tar -I 'xz -T0' --create --file=${target}.tar.xz ${tardir} --checkpoint=10000 --checkpoint-action=echo='%T'
+        echo "Contents of tar file:"
+        # Expenive operation (has to unzip the file), only use for debugging
+        # echo "Contents of tar file:"
+        # tar --list --file=${target}.tar.xz
         echo "artifact=${target}.tar.xz" >> "$GITHUB_ENV"
 
     - uses: actions/upload-artifact@v4
@@ -123,7 +134,6 @@ jobs:
         retention-days: 1
 
   release:
-    # needs: [build, rubik]
     needs: [build]
     runs-on: ubuntu-24.04
     steps:
