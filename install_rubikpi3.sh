@@ -8,6 +8,11 @@ echo '=== Current directory: \$(pwd) ==='
 echo '=== Files in current directory: ==='
 ls -la
 
+# This fixes log spam from iris_vpu AKA msm_vidc
+# See: https://github.com/rubikpi-ai/linux-debian/blob/0f0155ba6d6057a6a86162597f48c24e1a54d1a1/ubuntu/qcom/video/vidc/inc/msm_vidc_debug.h#L101
+# and https://github.com/rubikpi-ai/linux-debian/blob/0f0155ba6d6057a6a86162597f48c24e1a54d1a1/ubuntu/qcom/video/vidc/src/msm_vidc_debug.c#L25
+echo "options iris_vpu msm_fw_debug=0x18" > /etc/modprobe.d/iris_vpu.conf
+
 ln -sf libOpenCL.so.1 /usr/lib/aarch64-linux-gnu/libOpenCL.so # Fix for snpe-tools
 # Create user pi:raspberry login
 echo "creating pi user"
