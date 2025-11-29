@@ -75,6 +75,22 @@ jobs:
     - name: Fetch tags
       run: git fetch --tags --force
 
+    - name: Generate version file
+      run: |
+
+        # Build the final JSON object
+        json_string=$(jq -n \
+          --arg date "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+          --arg commit_sha "${GITHUB_SHA}" \
+          --arg commit_tag "$(git describe --tags --abbrev=0 2>/dev/null || echo "untagged")" \
+          --arg image_name "${{ matrix.name }}" \
+          --arg image_source "${{ matrix.base_image }}" \
+          '{build_date: $date, commit_sha: $commit_sha, commit_tag: $commit_tag, image_name: $image_name, image_source: $image_source}')
+
+        echo "$json_string"
+
+        echo "$json_string" > image-version.json
+
     - name: Install dependencies and build image
       uses: photonvision/photon-image-runner@HEAD
       id: install_deps
