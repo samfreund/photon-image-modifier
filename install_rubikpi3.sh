@@ -67,8 +67,8 @@ chmod +x ./install.sh
 ./install.sh --control-networking=yes --arch=aarch64 --version="$1"
 
 # Install packages from the RUBIK Pi PPA, we skip calling apt-get update here because install.sh already does that
-# libqnn1, libsnpe1, and qcom-adreno1 are for OD, qcom-fastrpc1 is for npu metrics
-apt-get -y install libqnn1 libsnpe1 qcom-adreno1 device-tree-compiler qcom-fastrpc1
+# libqnn1, libsnpe1, and qcom-adreno1 are for OD
+apt-get -y install libqnn1 libsnpe1 qcom-adreno1 device-tree-compiler
 
 # Download packages for installing NPU metrics daemon
 mkdir metrics-daemon
