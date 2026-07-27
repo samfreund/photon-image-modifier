@@ -77,9 +77,9 @@ DEBPOOL=https://deb.debian.org/debian/pool/contrib
 
 curl --output-dir metrics-daemon -O "${DEBPOOL}/f/fastrpc/libfastrpc1_1.0.2-2_arm64.deb"
 curl --output-dir metrics-daemon -O "${DEBPOOL}/libq/libqcnpuperf/libqcnpuperf1_1.0.0-1_arm64.deb"
-curl --output-dir metrics-daemon -O "https://github.com/samfreund/qcnpuperfmon/releases/download/0.0.1/qcnpuperfd_1.0.0-1_arm64.deb"
+curl -L --output-dir metrics-daemon -O "https://github.com/samfreund/qcnpuperfmon/releases/download/0.0.1/qcnpuperfd_1.0.0-1_arm64.deb"
 
-dpkg -i metrics-daemon/*.deb
+dpkg -i --force-overwrite metrics-daemon/*.deb
 rm -rf metrics-daemon
 
 # Enable ssh
