@@ -71,7 +71,13 @@ chmod +x ./install.sh
 apt-get -y install libqnn1 libsnpe1 qcom-adreno1 device-tree-compiler qcom-fastrpc1
 
 # Download packages for installing NPU metrics daemon
-curl -fL --create-dirs --output-dir metrics-daemon/ -O "https://github.com/samfreund-qc/libqcnpuperf/releases/download/v1.0.1/{qcnpuperfd_1.0-1_arm64.deb,libqcnpuperf1_1.0-1_arm64.deb}"
+mkdir metrics-daemon
+
+DEBPOOL=https://deb.debian.org/debian/pool/contrib
+
+curl --output-dir metrics-daemon -O "${DEBPOOL}/f/fastrpc/libfastrpc1_1.0.2-2_arm64.deb"
+curl --output-dir metrics-daemon -O "${DEBPOOL}/libq/libqcnpuperf/libqcnpuperf1_1.0.0-1_arm64.deb"
+curl --output-dir metrics-daemon -O "https://github.com/samfreund/qcnpuperfmon/releases/download/0.0.1/qcnpuperfd_1.0.0-1_arm64.deb"
 
 dpkg -i metrics-daemon/*.deb
 rm -rf metrics-daemon
