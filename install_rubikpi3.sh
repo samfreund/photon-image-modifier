@@ -69,6 +69,12 @@ chmod +x ./install.sh
 # Install packages from the RUBIK Pi PPA, we skip calling apt-get update here because install.sh already does that
 apt-get -y install libqnn1 libsnpe1 qcom-adreno1 device-tree-compiler
 
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 200
+sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 200
+
+sudo update-alternatives --set gcc /usr/bin/gcc-14
+sudo update-alternatives --set g++ /usr/bin/g++-14
+
 # Enable ssh
 systemctl enable ssh
 
