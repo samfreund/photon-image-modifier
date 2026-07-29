@@ -67,7 +67,7 @@ chmod +x ./install.sh
 ./install.sh --control-networking=yes --arch=aarch64 --version="$1"
 
 # Install packages from the RUBIK Pi PPA, we skip calling apt-get update here because install.sh already does that
-apt-get -y install libqnn1 libsnpe1 qcom-adreno1 device-tree-compiler
+apt-get -y install libqnn1 libsnpe1 qcom-adreno1 device-tree-compiler gcc-14 g++-14
 
 sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 200
 sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 200
