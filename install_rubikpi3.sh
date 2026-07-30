@@ -1,7 +1,7 @@
+#!/bin/bash
+
 # Exit on errors, print commands, ignore unset variables
 set -ex +u
-
-#!/bin/bash
 
 echo "=== Pre-upgrade space ==="
 df -h
