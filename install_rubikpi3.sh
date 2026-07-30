@@ -35,6 +35,8 @@ sudo sed -i 's/noble/plucky/g' /etc/apt/sources.list 2>/dev/null || true
 DEBIAN_FRONTEND=noninteractive sudo apt-get -y update
 DEBIAN_FRONTEND=noninteractive sudo apt-get -o Dpkg::Options::="--force-overwrite" -y upgrade || true
 DEBIAN_FRONTEND=noninteractive sudo apt-get -o Dpkg::Options::="--force-overwrite" -y dist-upgrade || true
+# Remove dragonwing initramfs hook that fails in chroot
+sudo rm -f /usr/share/initramfs-tools/hooks/linux-firmware-dragonwing
 # Fix dpkg state after upgrade (some pkg configs fail in chroot)
 sudo dpkg --configure -a 2>/dev/null || true
 sudo apt-get --fix-broken install -y 2>/dev/null || true
