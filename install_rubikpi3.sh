@@ -30,8 +30,8 @@ sudo debconf-set-selections <<< "grub-efi-arm64 grub-efi/install_devices_empty b
 
 # Upgrade from 24.04 to 26.04 via direct dist-upgrade
 # More space-efficient than do-release-upgrade (doesn't keep old packages)
-sudo sed -i 's/noble/plucky/g' /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
-sudo sed -i 's/noble/plucky/g' /etc/apt/sources.list 2>/dev/null || true
+sudo sed -i 's/noble/resolute/g' /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+sudo sed -i 's/noble/resolute/g' /etc/apt/sources.list 2>/dev/null || true
 DEBIAN_FRONTEND=noninteractive sudo apt-get -y update
 DEBIAN_FRONTEND=noninteractive sudo apt-get -o Dpkg::Options::="--force-overwrite" -y upgrade || true
 DEBIAN_FRONTEND=noninteractive sudo apt-get -o Dpkg::Options::="--force-overwrite" -y dist-upgrade || true
@@ -76,7 +76,7 @@ EOF_DPKG
 cat > /etc/apt/sources.list.d/ubuntu.sources << EOF_UBUNTU_SOURCES
 Types: deb
 URIs: http://ports.ubuntu.com/ubuntu-ports
-Suites: plucky plucky-updates plucky-backports
+Suites: resolute resolute-updates resolute-backports
 Components: main universe restricted multiverse
 Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
 EOF_UBUNTU_SOURCES
