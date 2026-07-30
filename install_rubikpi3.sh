@@ -11,6 +11,13 @@ rm -f /var/lib/snapd/seed/seed.yaml 2>/dev/null || true
 # Remove packages that waste space and aren't needed in the final image
 apt-get purge --yes lxd-installer lxd-agent-loader snapd gdb gcc g++ linux-headers* libgcc*-dev perl-modules* git vim-runtime python3-twisted bluez 2>/dev/null || true
 
+# Remove filesystem/RAID/crypto tools not needed on the rubikpi3 (ext4 root).
+# This also shrinks the 26.04 dracut/initramfs by skipping their hooks.
+apt-get purge --yes btrfs-progs lvm2 cryptsetup cryptsetup-initramfs mdadm multipath-tools open-iscsi 2>/dev/null || true
+
+# Remove misc services not needed on a headless vision appliance
+apt-get purge --yes fwupd apport ubuntu-advantage-tools landscape-common motd-news-config friendly-recovery command-not-found plymouth bolt cups alsa-utils 2>/dev/null || true
+
 # Remove packages that conflict with the 26.04 upgrade
 apt-get remove --yes libgstreamer-qcom1.0-0 sosreport 2>/dev/null || true
 
@@ -20,6 +27,16 @@ apt-get clean
 
 rm -rf /usr/share/doc
 rm -rf /usr/share/locale/
+
+# Remove firmware for hardware that the rubikpi3 definitely doesn't have
+rm -rf /usr/lib/firmware/mrvl
+rm -rf /usr/lib/firmware/mellanox
+rm -rf /usr/lib/firmware/nvidia
+rm -rf /usr/lib/firmware/intel
+rm -rf /usr/lib/firmware/amd
+rm -rf /usr/lib/firmware/amdgpu
+rm -rf /usr/lib/firmware/i915
+rm -rf /usr/lib/firmware/radeon
 
 echo "=== Space after pre-cleanup ==="
 df -h
