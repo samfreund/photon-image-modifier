@@ -1,14 +1,41 @@
 #!/bin/bash
 
+echo "=== Pre-upgrade space ==="
+df -h
+
+# Free up space BEFORE upgrading, so the dist-upgrade has room to work
+# get rid of snap seeds
+rm -rf /var/lib/snapd/seed/snaps/* 2>/dev/null || true
+rm -f /var/lib/snapd/seed/seed.yaml 2>/dev/null || true
+
+# Remove packages that waste space and aren't needed in the final image
+apt-get purge --yes lxd-installer lxd-agent-loader snapd gdb gcc g++ linux-headers* libgcc*-dev perl-modules* git vim-runtime python3-twisted bluez 2>/dev/null || true
+
+# Remove packages that conflict with the 26.04 upgrade
+apt-get remove --yes libgstreamer-qcom1.0-0 sosreport 2>/dev/null || true
+
+apt-get autoremove --purge -y
+rm -rf /var/lib/apt/lists/*
+apt-get clean
+
+rm -rf /usr/share/doc
+rm -rf /usr/share/locale/
+
+echo "=== Space after pre-cleanup ==="
+df -h
+
 # Upgrade from 24.04 to 26.04 via direct dist-upgrade
 # More space-efficient than do-release-upgrade (doesn't keep old packages)
 sudo sed -i 's/noble/plucky/g' /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
 sudo sed -i 's/noble/plucky/g' /etc/apt/sources.list 2>/dev/null || true
 DEBIAN_FRONTEND=noninteractive sudo apt-get -y update
-DEBIAN_FRONTEND=noninteractive sudo apt-get -y upgrade
-DEBIAN_FRONTEND=noninteractive sudo apt-get -y dist-upgrade
+DEBIAN_FRONTEND=noninteractive sudo apt-get -o Dpkg::Options::="--force-overwrite" -y upgrade
+DEBIAN_FRONTEND=noninteractive sudo apt-get -o Dpkg::Options::="--force-overwrite" -y dist-upgrade
 sudo apt autoremove --purge -y
 sudo apt-get clean
+
+echo "=== Space after upgrade ==="
+df -h
 
 # Exit on errors, print commands, ignore unset variables
 set -ex +u
@@ -56,11 +83,6 @@ wget -qO - https://thundercomm.s3.dualstack.ap-northeast-1.amazonaws.com/uploads
 echo "Space available before purging things"
 df -h
 
-# get rid of snaps
-echo "Purging snaps"
-rm -rf /var/lib/snapd/seed/snaps/*
-rm -f /var/lib/snapd/seed/seed.yaml
-apt-get purge --yes lxd-installer lxd-agent-loader snapd gdb gcc g++ linux-headers* libgcc*-dev perl-modules* git vim-runtime python3-twisted sosreport bluez
 apt-get autoremove --yes
 
 rm -rf /var/lib/apt/lists/*
@@ -144,15 +166,11 @@ EOF_FAN_SERVICE
 # 4. Enable the new service
 systemctl enable rubik-fan-max.service
 
-echo "Space available before purging things"
-df -h /dev/loop0
+echo "Space available before final cleanup"
+df -h
 
 rm -rf /var/lib/apt/lists/*
-df -h /dev/loop0
-
 apt-get clean
-df -h /dev/loop0
-
 rm -rf /usr/share/doc
 rm -rf /usr/share/locale/
 
@@ -162,5 +180,5 @@ rm -rf /usr/lib/firmware/mellanox
 rm -rf /usr/lib/firmware/nvidia
 rm -rf /usr/lib/firmware/intel
 
-echo "Space available after purging things"
-df -h /dev/loop0
+echo "Space available after final cleanup"
+df -h
