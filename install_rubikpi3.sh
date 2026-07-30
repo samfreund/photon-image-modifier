@@ -1,3 +1,6 @@
+# Exit on errors, print commands, ignore unset variables
+set -ex +u
+
 #!/bin/bash
 
 echo "=== Pre-upgrade space ==="
@@ -65,9 +68,6 @@ sudo apt-get clean
 
 echo "=== Space after upgrade ==="
 df -h
-
-# Exit on errors, print commands, ignore unset variables
-set -ex +u
 
 cd /tmp/build
 echo '=== Current directory: $(pwd) ==='
