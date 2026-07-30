@@ -1,5 +1,14 @@
 #!/bin/bash
 
+# Start by upgrading to 26.04 (please release a 26.04 image variant Qualcomm :pray:)
+sudo apt update && sudo apt upgrade -y
+sudo apt dist-upgrade -y
+sudo apt autoremove -y   
+
+sudo sed -i 's/Prompt=.*/Prompt=lts/' /etc/update-manager/release-upgrades
+
+sudo do-release-upgrade --frontend=DistUpgradeViewNonInteractive
+
 # Exit on errors, print commands, ignore unset variables
 set -ex +u
 
