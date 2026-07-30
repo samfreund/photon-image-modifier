@@ -24,6 +24,10 @@ rm -rf /usr/share/locale/
 echo "=== Space after pre-cleanup ==="
 df -h
 
+# Pre-configure grub to avoid interactive prompts in chroot
+sudo debconf-set-selections <<< "grub-efi-arm64 grub-efi/install_devices multiselect"
+sudo debconf-set-selections <<< "grub-efi-arm64 grub-efi/install_devices_empty boolean true"
+
 # Upgrade from 24.04 to 26.04 via direct dist-upgrade
 # More space-efficient than do-release-upgrade (doesn't keep old packages)
 sudo sed -i 's/noble/plucky/g' /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
