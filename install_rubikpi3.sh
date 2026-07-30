@@ -40,6 +40,9 @@ sudo rm -f /usr/share/initramfs-tools/hooks/linux-firmware-dragonwing
 # Fix dpkg state after upgrade (some pkg configs fail in chroot)
 sudo dpkg --configure -a 2>/dev/null || true
 sudo apt-get --fix-broken install -y 2>/dev/null || true
+# Regenerate grub.cfg now that the kernel/initramfs are actually in place
+# (the kernel postinst ran before the initramfs existed, so grub.cfg has no entries)
+sudo update-grub 2>/dev/null || true
 sudo apt autoremove --purge -y
 sudo apt-get clean
 
