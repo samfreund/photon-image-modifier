@@ -1,13 +1,14 @@
 #!/bin/bash
 
-# Start by upgrading to 26.04 (please release a 26.04 image variant Qualcomm :pray:)
-sudo apt update && sudo apt upgrade -y
-sudo apt dist-upgrade -y
-sudo apt autoremove -y   
-
-sudo sed -i 's/Prompt=.*/Prompt=lts/' /etc/update-manager/release-upgrades
-
-sudo do-release-upgrade --frontend=DistUpgradeViewNonInteractive
+# Upgrade from 24.04 to 26.04 via direct dist-upgrade
+# More space-efficient than do-release-upgrade (doesn't keep old packages)
+sudo sed -i 's/noble/plucky/g' /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+sudo sed -i 's/noble/plucky/g' /etc/apt/sources.list 2>/dev/null || true
+DEBIAN_FRONTEND=noninteractive sudo apt-get -y update
+DEBIAN_FRONTEND=noninteractive sudo apt-get -y upgrade
+DEBIAN_FRONTEND=noninteractive sudo apt-get -y dist-upgrade
+sudo apt autoremove --purge -y
+sudo apt-get clean
 
 # Exit on errors, print commands, ignore unset variables
 set -ex +u
@@ -36,7 +37,7 @@ EOF_DPKG
 cat > /etc/apt/sources.list.d/ubuntu.sources << EOF_UBUNTU_SOURCES
 Types: deb
 URIs: http://ports.ubuntu.com/ubuntu-ports
-Suites: noble noble-updates noble-backports
+Suites: plucky plucky-updates plucky-backports
 Components: main universe restricted multiverse
 Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
 EOF_UBUNTU_SOURCES
@@ -46,7 +47,7 @@ EOF_UBUNTU_SOURCES
 apt-get -q update
 
 # This needs to run before install.sh to fix some weird dependency issues
-apt-get -y --allow-downgrades install libsqlite3-0=3.45.1-1ubuntu2
+apt-get -y install libsqlite3-0
 
 # Add the GPG key for the RUBIK Pi PPA
 wget -qO - https://thundercomm.s3.dualstack.ap-northeast-1.amazonaws.com/uploads/web/rubik-pi-3/tools/key.asc | tee /etc/apt/trusted.gpg.d/rubikpi3.asc
