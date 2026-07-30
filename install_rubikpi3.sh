@@ -64,6 +64,8 @@ sudo apt-get --fix-broken install -y 2>/dev/null || true
 # (the kernel postinst ran before the initramfs existed, so grub.cfg has no entries)
 sudo update-grub 2>/dev/null || true
 sudo apt autoremove --purge -y
+# Remove old 24.04 kernels, keep the new 26.04 one(s)
+dpkg -l | awk '/^ii.*linux-(image|headers|modules)/{print $2}' | sort -V | head -n -1 | xargs sudo apt-get purge --yes 2>/dev/null || true
 sudo apt-get clean
 
 echo "=== Space after upgrade ==="
