@@ -104,9 +104,6 @@ EOF_UBUNTU_SOURCES
 
 apt-get -q update
 
-# This needs to run before install.sh to fix some weird dependency issues
-apt-get -y install libsqlite3-0
-
 # Add the GPG key for the RUBIK Pi PPA
 wget -qO - https://thundercomm.s3.dualstack.ap-northeast-1.amazonaws.com/uploads/web/rubik-pi-3/tools/key.asc | tee /etc/apt/trusted.gpg.d/rubikpi3.asc
 
