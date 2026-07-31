@@ -45,28 +45,28 @@ echo "=== Space after pre-cleanup ==="
 df -h
 
 # Pre-configure grub to avoid interactive prompts in chroot
-sudo debconf-set-selections <<< "grub-efi-arm64 grub-efi/install_devices multiselect"
-sudo debconf-set-selections <<< "grub-efi-arm64 grub-efi/install_devices_empty boolean true"
+debconf-set-selections <<< "grub-efi-arm64 grub-efi/install_devices multiselect"
+debconf-set-selections <<< "grub-efi-arm64 grub-efi/install_devices_empty boolean true"
 
 # Upgrade from 24.04 to 26.04 via direct dist-upgrade
 # More space-efficient than do-release-upgrade (doesn't keep old packages)
-sudo sed -i 's/noble/resolute/g' /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
-sudo sed -i 's/noble/resolute/g' /etc/apt/sources.list 2>/dev/null || true
-DEBIAN_FRONTEND=noninteractive sudo apt-get -y update
-DEBIAN_FRONTEND=noninteractive sudo apt-get -o Dpkg::Options::="--force-overwrite" -y upgrade || true
-DEBIAN_FRONTEND=noninteractive sudo apt-get -o Dpkg::Options::="--force-overwrite" -y dist-upgrade || true
+sed -i 's/noble/resolute/g' /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+sed -i 's/noble/resolute/g' /etc/apt/sources.list 2>/dev/null || true
+DEBIAN_FRONTEND=noninteractive apt-get -y update
+DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-overwrite" -y upgrade || true
+DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-overwrite" -y dist-upgrade || true
 # Remove dragonwing initramfs hook that fails in chroot
-sudo rm -f /usr/share/initramfs-tools/hooks/linux-firmware-dragonwing
+rm -f /usr/share/initramfs-tools/hooks/linux-firmware-dragonwing
 # Fix dpkg state after upgrade (some pkg configs fail in chroot)
-sudo dpkg --configure -a 2>/dev/null || true
-sudo apt-get --fix-broken install -y 2>/dev/null || true
+dpkg --configure -a 2>/dev/null || true
+apt-get --fix-broken install -y 2>/dev/null || true
 # Regenerate grub.cfg now that the kernel/initramfs are actually in place
 # (the kernel postinst ran before the initramfs existed, so grub.cfg has no entries)
-sudo update-grub 2>/dev/null || true
-sudo apt autoremove --purge -y
+update-grub 2>/dev/null || true
+apt autoremove --purge -y
 # Remove old 24.04 kernels, keep the new 26.04 one(s)
-dpkg -l | awk '/^ii.*linux-(image|headers|modules)/{print $2}' | sort -V | head -n -1 | xargs sudo apt-get purge --yes 2>/dev/null || true
-sudo apt-get clean
+dpkg -l | awk '/^ii.*linux-(image|headers|modules)/{print $2}' | sort -V | head -n -1 | xargs apt-get purge --yes 2>/dev/null || true
+apt-get clean
 
 echo "=== Space after upgrade ==="
 df -h
