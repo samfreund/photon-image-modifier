@@ -91,15 +91,49 @@ runcmd:
 - touch /etc/cloud/cloud-init.disabled
 EOFUSERDATA
 
-# This udev rule is a workaround for a quirk in the Rubik Pi 3's USB controller that causes the camera to be assigned a different path on each boot, which breaks PhotonVision's ability to find it. This rule creates a consistent symlink for the camera and removes the old ones.
-cat >> /etc/udev/rules.d/67-camera-path-fix.rules << 'EOFUDEV'
-   SUBSYSTEM=="video4linux", ENV{ID_PATH}=="platform-xhci-hcd.0.auto-usb-0:1:1.0", \
-  ENV{ID_PATH}="platform-xhci-hcd.1.auto-usb-0:1:1.0", \
-  ENV{ID_PATH_TAG}="platform-xhci-hcd_1_auto-usb-0_1_1_0", \
-  ENV{ID_PATH_WITH_USB_REVISION}="platform-xhci-hcd.1.auto-usbv2-0:1:1.0", \
-  SYMLINK+="v4l/by-path/platform-xhci-hcd.1.auto-usb-0:1:1.0-video-index$attr{index}", \
-  RUN+="/bin/rm -f /dev/v4l/by-path/platform-xhci-hcd.0.auto-usb-0:1:1.0-video-index$attr{index} /dev/v4l/by-path/platform-xhci-hcd.0.auto-usbv2-0:1:1.0-video-index$attr{index}"
+# The Rubik Pi 3's two dwc3 USB ports enumerate as xhci-hcd.0.auto or
+# xhci-hcd.1.auto in racy probe order, so a camera in either port gets a
+# different by-path identity on each boot and PhotonVision can't match its
+# saved config. These rules pin each physical port (identified by its fixed
+# dwc3 MMIO address, not the racy xhci-hcd instance number) to a stable
+# synthetic by-path name, and the helper script removes only that device's own
+# racy by-path symlinks. Unlike the previous rule, this stays correct when two
+# or more cameras are connected.
+cat > /etc/udev/rules.d/67-camera-path-fix.rules << 'EOFUDEV'
+# USB port on dwc3 @ 8c00000
+SUBSYSTEM=="video4linux", KERNELS=="8c00000.usb", \
+  SYMLINK+="v4l/by-path/platform-dwc3-8c00000-usb-0:1:1.0-video-index$attr{index}", \
+  RUN+="/usr/local/sbin/rubik-camera-path-fix.sh $env{ID_PATH} $env{ID_PATH_WITH_USB_REVISION} $attr{index}"
+
+# USB port on dwc3 @ a600000
+SUBSYSTEM=="video4linux", KERNELS=="a600000.usb", \
+  SYMLINK+="v4l/by-path/platform-dwc3-a600000-usb-0:1:1.0-video-index$attr{index}", \
+  RUN+="/usr/local/sbin/rubik-camera-path-fix.sh $env{ID_PATH} $env{ID_PATH_WITH_USB_REVISION} $attr{index}"
 EOFUDEV
+
+cat > /usr/local/sbin/rubik-camera-path-fix.sh << 'EOF_PATH_FIX'
+#!/bin/sh
+# Called by /etc/udev/rules.d/67-camera-path-fix.rules for cameras on the
+# Rubik Pi 3's dwc3 USB ports. Removes only the racy per-boot xhci-hcd.N.auto
+# by-path symlinks belonging to the device that triggered this event, so
+# cameras on other ports are never touched.
+# Args: <ID_PATH> <ID_PATH_WITH_USB_REVISION> <video index>
+id_path=${1:-}
+id_path_usb_rev=${2:-}
+index=${3:-}
+
+[ -n "$id_path" ] || exit 0
+
+case "$id_path" in
+    platform-xhci-hcd.*)
+        /bin/rm -f "/dev/v4l/by-path/${id_path}-video-index${index}" \
+                   "/dev/v4l/by-path/${id_path_usb_rev}-video-index${index}"
+        ;;
+esac
+
+exit 0
+EOF_PATH_FIX
+chmod +x /usr/local/sbin/rubik-camera-path-fix.sh
 
 # Override the automatic fan control and set it to run continuously at full speed
 # Instructions provided by Rami
