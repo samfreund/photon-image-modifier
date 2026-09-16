@@ -44,6 +44,7 @@ rm -rf /usr/lib/firmware/radeon
 echo "=== Space after pre-cleanup ==="
 df -h
 
+# START 26.04 UPGRADE HACK
 # Pre-configure grub to avoid interactive prompts in chroot
 debconf-set-selections <<< "grub-efi-arm64 grub-efi/install_devices multiselect"
 debconf-set-selections <<< "grub-efi-arm64 grub-efi/install_devices_empty boolean true"
@@ -67,6 +68,26 @@ apt autoremove --purge -y
 # Remove old 24.04 kernels, keep the new 26.04 one(s)
 dpkg -l | awk '/^ii.*linux-(image|headers|modules)/{print $2}' | sort -V | head -n -1 | xargs apt-get purge --yes 2>/dev/null || true
 apt-get clean
+
+# Ensure Hexagon DSP firmware is included and enabled, required for OD
+cat > /etc/initramfs-tools/hooks/qcom-dsp-firmware << 'EOF_DSP_HOOK'
+#!/bin/sh
+PREREQ=""
+prereqs() { echo "$PREREQ"; }
+case "$1" in prereqs) prereqs; exit 0;; esac
+. /usr/share/initramfs-tools/hook-functions
+for fw in qcom/qcs6490/cdsp.mbn qcom/qcs6490/Thundercomm/RubikPi3/adsp.mbn; do
+    add_firmware "$fw" || echo "W: qcom-dsp-firmware: $fw not found, DSPs will not boot" >&2
+done
+EOF_DSP_HOOK
+chmod 755 /etc/initramfs-tools/hooks/qcom-dsp-firmware
+
+update-initramfs -u -k all
+for fw in qcom/qcs6490/cdsp.mbn qcom/qcs6490/Thundercomm/RubikPi3/adsp.mbn; do
+    lsinitramfs /boot/initrd.img | grep -q "firmware/.*${fw}$" \
+        || { echo "ERROR: ${fw} missing from initramfs" >&2; exit 1; }
+done
+# END 26.04 UPGRADE HACK
 
 echo "=== Space after upgrade ==="
 df -h
