@@ -4,7 +4,7 @@
 set -ex +u
 
 # silence log spam from dpkg
-cat > /etc/apt/apt.conf.d/99dpkg.conf << EOF
+cat > /etc/apt/apt.conf.d/99dpkg.conf << 'EOF'
 Dpkg::Progress-Fancy "0";
 APT::Color "0";
 Dpkg::Use-Pty "0";
@@ -39,7 +39,7 @@ sed -i 's/extraargs=/&initcall_debug ignore_loglevel cryptomgr.notests=1 nokprob
 # board, which has two ethernet ports, this service generates two addresses.
 # This code was created by Gemini and reviewed/tested by CRS.
 
-cat > /usr/local/bin/generate-unique-mac.sh << EOFgenerate
+cat > /usr/local/bin/generate-unique-mac.sh << 'EOFgenerate'
 #!/bin/bash
 ENV_FILE="/boot/armbianEnv.txt"
 
@@ -95,7 +95,7 @@ EOFgenerate
 
 chmod +x /usr/local/bin/generate-unique-mac.sh
 
-cat > /etc/systemd/system/mac-provisioner.service << EOFservice
+cat > /etc/systemd/system/mac-provisioner.service << 'EOFservice'
 [Unit]
 Description=Generate Unique Persistent MAC Address on First Boot
 ConditionPathExists=/boot/armbianEnv.txt
