@@ -35,7 +35,7 @@ ETHERNET_INTERFACES=($(ls /sys/class/net | grep -E '^(eth|end)[0-9]' | sort))
 
 # 4. REMOVE ARMBIAN DEFAULTS (Crucial step to prevent rule overrides)
 # Wipes out '10-dhcp-all-interfaces.yaml' or similar default templates in the directory
-# rm -f ${NETPLAN_DIR}/10-dhcp-all-interfaces.yaml
+rm -f ${NETPLAN_DIR}/10-dhcp-all-interfaces.yaml
 # rm -f ${NETPLAN_DIR}/01-*.yaml # Wipe fallback profiles if present
 
 # 5. Generate the Netplan YAML Structure and add a NetworkManager rule to
@@ -58,9 +58,9 @@ EOF
 
     mkdir -p "$NM_CONF_DIR"
     cat << EOF > "$NM_CONF_FILE"
-[connection-"${PORT1}"]
-    match-device=interface-name:"${PORT1}"
-    ethernet.cloned-mac-address="${MAC1}"
+[connection-${PORT1}]
+    match-device=interface-name:${PORT1}
+    ethernet.cloned-mac-address=${MAC1}
 EOF
 
     # If the board is an Orange Pi 5 Plus, append the secondary interface layout
@@ -76,9 +76,9 @@ EOF
 EOF
 
         cat << EOF >> "$NM_CONF_FILE"
-[connection-"${PORT2}"]
-    match-device=interface-name:"${PORT2}"
-    ethernet.cloned-mac-address="${MAC2}"
+[connection-${PORT2}]
+    match-device=interface-name:${PORT2}
+    ethernet.cloned-mac-address=${MAC2}
 EOF
 
     fi
