@@ -33,6 +33,86 @@ cat /etc/systemd/system/photonvision.service
 # sed -i s/verbosity=1/verbosity=7/g /boot/armbianEnv.txt
 sed -i 's/extraargs=/&initcall_debug ignore_loglevel cryptomgr.notests=1 nokprobes initcall_blacklist=init_kprobe_trace,crypto_kdf108_init,init_blk_tracer trace_buf_size=1 /' /boot/armbianEnv.txt
 
+# Some (many) Orange Pi 5 boards contain a buggy version of U-Boot (2017.09-orangepi). One problem with this
+# version is that it generates a new MAC address on every boot. This is an attempt to fix that problem by 
+# providing every board with a unique, static MAC address based on the CPU serial number. To support the OPi5 Plus
+# board, which has two ethernet ports, this service generates two addresses. 
+# This code was created by Gemini and reviewed/tested by CRS.
+
+cat > /usr/local/bin/generate-unique-mac.sh << EOFgenerate
+#!/bin/bash
+ENV_FILE="/boot/armbianEnv.txt"
+
+# Check if ethaddr is already set to prevent re-running
+if grep -q "^ethaddr=" "$ENV_FILE"; then
+    exit 0
+fi
+
+# 1. Extract the unique hardware serial number
+CPU_SERIAL=$(grep -i "serial" /proc/cpuinfo | awk '{print $3}')
+if [ -z "$CPU_SERIAL" ]; then
+    CPU_SERIAL=$(cat /proc/sys/kernel/random/uuid)
+fi
+
+# 2. Hash the serial string to get base hex components
+# We extract 4 pairs (8 chars) to allow mathematical increments on the final bytes
+HASH_BASE=$(echo -n "$CPU_SERIAL" | md5sum | cut -c1-8 | sed 's/../&:/g')
+
+# Extract two distinct ending bytes mathematically from the hash to avoid collision
+BYTE5_DEC=$(( 16#$(echo -n "$CPU_SERIAL" | md5sum | cut -c9-10) ))
+BYTE6_DEC=$(( 16#$(echo -n "$CPU_SERIAL" | md5sum | cut -c11-12) ))
+
+# Calculate Port 1 and Port 2 final bytes (modulo 256 keeps them valid 00-FF hex)
+P1_B5=$(printf "%02X" $BYTE5_DEC)
+P1_B6=$(printf "%02X" $BYTE6_DEC)
+
+P2_B5=$(printf "%02X" $BYTE5_DEC)
+P2_B6=$(printf "%02X" $(( (BYTE6_DEC + 1) % 256 )))
+
+# 3. Construct local unicast MAC addresses (02: prefix)
+MAC1="02:${HASH_BASE}${P1_B5}:${P1_B6}"
+MAC2="02:${HASH_BASE}${P2_B5}:${P2_B6}"
+
+# 4. Write to armbianEnv.txt (U-Boot parses ethaddr and eth1addr)
+echo "ethaddr=${MAC1}" >> "$ENV_FILE"
+echo "eth1addr=${MAC2}" >> "$ENV_FILE"
+
+# 5. Fallback NetworkManager configuration for both profiles
+if [ -d "/etc/NetworkManager/system-connections" ]; then
+    # Find up to two existing wired connection profiles
+    MAPFILE=($(ls /etc/NetworkManager/system-connections/*.nmconnection 2>/dev/null | head -n 2))
+    
+    # Configure Profile 1 if it exists
+    if [ -n "${MAPFILE[0]}" ]; then
+        sed -i '/\[ethernet\]/a cloned-mac-address='${MAC1}'' "${MAPFILE[0]}"
+    fi
+    # Configure Profile 2 if it exists
+    if [ -n "${MAPFILE[1]}" ]; then
+        sed -i '/\[ethernet\]/a cloned-mac-address='${MAC2}'' "${MAPFILE[1]}"
+    fi
+fi
+EOFgenerate
+
+chmod +x /usr/local/bin/generate-unique-mac.sh
+
+cat > /etc/systemd/system/mac-provisioner.service << EOFservice
+[Unit]
+Description=Generate Unique Persistent MAC Address on First Boot
+ConditionPathExists=/boot/armbianEnv.txt
+Before=network.target network-pre.target NetworkManager.service
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/generate-unique-mac.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+EOFservice
+
+systemctl enable mac-provisioner.service
+
 # networkd isn't being used, this causes an unnecessary delay
 # systemctl disable systemd-networkd-wait-online.service
 
