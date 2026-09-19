@@ -4,7 +4,7 @@
 set -ex +u
 
 # silence log spam from dpkg
-cat > /etc/apt/apt.conf.d/99dpkg.conf << 'EOF'
+cat > /etc/apt/apt.conf.d/99dpkg.conf << EOF
 Dpkg::Progress-Fancy "0";
 APT::Color "0";
 Dpkg::Use-Pty "0";
@@ -39,74 +39,16 @@ sed -i 's/extraargs=/&initcall_debug ignore_loglevel cryptomgr.notests=1 nokprob
 # board, which has two ethernet ports, this service generates two addresses.
 # This code was created by Gemini and reviewed/tested by CRS.
 
-cat > /usr/local/bin/generate-unique-mac.sh << 'EOFgenerate'
-#!/bin/bash
-CONF_FILE="/etc/NetworkManager/conf.d/99-hardware-mac.conf"
-
-# Check if we already created the global config to prevent duplicate runs
-if [ -f "$CONF_FILE" ]; then
-    exit 0
-fi
-
-# 1. Extract the unique hardware serial number
-CPU_SERIAL=$(grep -i "serial" /proc/cpuinfo | awk '{print $3}')
-if [ -z "$CPU_SERIAL" ]; then
-    CPU_SERIAL=$(cat /proc/sys/kernel/random/uuid)
-fi
-
-# 2. Extract interface names dynamically (handles eth0/eth1 or end0/end1 variants)
-IFACES=($(ip -o link show | awk -F': ' '$2 ~ /^(eth|end)[0-9]/ {print $2}' | sort))
-IFACE1="${IFACES[0]}"
-IFACE2="${IFACES[1]}"
-
-# Default fallbacks if the kernel hasn't fully populated the sysfs yet
-[ -z "$IFACE1" ] && IFACE1="eth0"
-[ -z "$IFACE2" ] && IFACE2="eth1"
-
-# 3. Hash the serial string to get base hex components (4 pairs / 8 chars)
-HASH_BASE=$(echo -n "$CPU_SERIAL" | md5sum | cut -c1-8 | sed 's/../&:/g')
-
-# Extract two distinct ending bytes mathematically from the hash to avoid collisions
-BYTE5_DEC=$(( 16#$(echo -n "$CPU_SERIAL" | md5sum | cut -c9-10) ))
-BYTE6_DEC=$(( 16#$(echo -n "$CPU_SERIAL" | md5sum | cut -c11-12) ))
-
-# Calculate Port 1 and Port 2 final bytes (modulo 256 keeps them valid 00-FF hex)
-P1_B5=$(printf "%02X" $BYTE5_DEC)
-P1_B6=$(printf "%02X" $BYTE6_DEC)
-
-P2_B5=$(printf "%02X" $BYTE5_DEC)
-P2_B6=$(printf "%02X" $(( (BYTE6_DEC + 1) % 256 )))
-
-# Construct local unicast MAC addresses (02: prefix)
-MAC1="02:${HASH_BASE}${P1_B5}:${P1_B6}"
-MAC2="02:${HASH_BASE}${P2_B5}:${P2_B6}"
-
-# 4. Generate the global configuration block for NetworkManager
-mkdir -p /etc/NetworkManager/conf.d
-cat << EOF > "$CONF_FILE"
-[device-mac-port1]
-match-device=interface-name:${IFACE1}
-ethernet.cloned-mac-address=${MAC1}
-
-[device-mac-port2]
-match-device=interface-name:${IFACE2}
-ethernet.cloned-mac-address=${MAC2}
-EOF
-
-# Ensure appropriate permissions on configuration changes
-chmod 644 "$CONF_FILE"
-
-# Restart NetworkManager immediately to catch the new global assignments
-systemctl restart NetworkManager
-EOFgenerate
-
+cp ./opi5/generate-unique-mac.sh /usr/local/bin/generate-unique-mac.sh
 chmod +x /usr/local/bin/generate-unique-mac.sh
 
 cat > /etc/systemd/system/mac-provisioner.service << 'EOFservice'
 [Unit]
-Description=Generate Unique Persistent MAC Address on First Boot
-Before=NetworkManager.service
+Description=Generate Unique Persistent MAC Address on First Boot via Netplan
 DefaultDependencies=no
+After=local-fs.target
+Before=netplan-pre-apply.service network-pre.target
+Wants=network-pre.target
 
 [Service]
 Type=oneshot
@@ -114,7 +56,7 @@ ExecStart=/usr/local/bin/generate-unique-mac.sh
 RemainAfterExit=yes
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=basic.target
 EOFservice
 
 systemctl enable mac-provisioner.service
