@@ -128,7 +128,7 @@ mv -f "${NETPLAN_FILE}.tmp" "$NETPLAN_FILE"
 mv -f "${NM_CONF_FILE}.tmp" "$NM_CONF_FILE"
 
 # Apply Netplan changes instantly
-netplan apply
+# netplan apply
 
 # Mark success only after the configuration has been applied.
 touch "$SUCCESS_FILE"

@@ -44,17 +44,19 @@ chmod +x /usr/local/bin/generate-unique-mac.sh
 
 cat > /etc/systemd/system/mac-provisioner.service << 'EOFservice'
 [Unit]
-Description=Generate Unique Persistent MAC Address on First Boot via Netplan
-DefaultDependencies=no
-Before=netplan-pre-apply.service network-pre.target
+Description=Generate persistent MAC addresses
+After=local-fs.target
+Before=NetworkManager.service
+ConditionPathExists=!/etc/netplan/.mac-provisioned
 
 [Service]
 Type=oneshot
 ExecStart=/usr/local/bin/generate-unique-mac.sh
 RemainAfterExit=yes
+TimeoutStartSec=90
 
 [Install]
-WantedBy=basic.target
+WantedBy=multi-user.target
 EOFservice
 
 systemctl enable mac-provisioner.service
