@@ -34,9 +34,9 @@ cat /etc/systemd/system/photonvision.service
 sed -i 's/extraargs=/&initcall_debug ignore_loglevel cryptomgr.notests=1 nokprobes initcall_blacklist=init_kprobe_trace,crypto_kdf108_init,init_blk_tracer trace_buf_size=1 /' /boot/armbianEnv.txt
 
 # Some (many) Orange Pi 5 boards contain a buggy version of U-Boot (2017.09-orangepi). One problem with this
-# version is that it generates a new MAC address on every boot. This is an attempt to fix that problem by 
+# version is that it generates a new MAC address on every boot. This is an attempt to fix that problem by
 # providing every board with a unique, static MAC address based on the CPU serial number. To support the OPi5 Plus
-# board, which has two ethernet ports, this service generates two addresses. 
+# board, which has two ethernet ports, this service generates two addresses.
 # This code was created by Gemini and reviewed/tested by CRS.
 
 cat > /usr/local/bin/generate-unique-mac.sh << EOFgenerate
@@ -81,7 +81,7 @@ echo "eth1addr=${MAC2}" >> "$ENV_FILE"
 if [ -d "/etc/NetworkManager/system-connections" ]; then
     # Find up to two existing wired connection profiles
     MAPFILE=($(ls /etc/NetworkManager/system-connections/*.nmconnection 2>/dev/null | head -n 2))
-    
+
     # Configure Profile 1 if it exists
     if [ -n "${MAPFILE[0]}" ]; then
         sed -i '/\[ethernet\]/a cloned-mac-address='${MAC1}'' "${MAPFILE[0]}"
