@@ -40,7 +40,7 @@ rm -f ${NETPLAN_DIR}/10-dhcp-all-interfaces.yaml
 # 5. Generate the Netplan YAML Structure and add a NetworkManager rule to
 # honor the macaddr for new connections
 if [ ${#ETHERNET_INTERFACES[@]} -gt 0 ]; then
-    PORT1="${ETHERNET_INTERFACES}"
+    PORT1="${ETHERNET_INTERFACES[0]}"
 
     cat << EOF > "$NETPLAN_FILE"
 network:
@@ -64,7 +64,7 @@ EOF
 
     # If the board is an Orange Pi 5 Plus, append the secondary interface layout
     if [ ${#ETHERNET_INTERFACES[@]} -gt 1 ]; then
-        PORT2="${ETHERNET_INTERFACES}"
+        PORT2="${ETHERNET_INTERFACES[1]}"
         cat << EOF >> "$NETPLAN_FILE"
     ${PORT2}:
       match:
