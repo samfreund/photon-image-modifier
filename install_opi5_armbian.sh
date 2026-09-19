@@ -41,10 +41,10 @@ sed -i 's/extraargs=/&initcall_debug ignore_loglevel cryptomgr.notests=1 nokprob
 
 cat > /usr/local/bin/generate-unique-mac.sh << 'EOFgenerate'
 #!/bin/bash
-ENV_FILE="/boot/armbianEnv.txt"
+CONF_FILE="/etc/NetworkManager/conf.d/99-hardware-mac.conf"
 
-# Check if ethaddr is already set to prevent re-running
-if grep -q "^ethaddr=" "$ENV_FILE"; then
+# Check if we already created the global config to prevent duplicate runs
+if [ -f "$CONF_FILE" ]; then
     exit 0
 fi
 
@@ -54,11 +54,19 @@ if [ -z "$CPU_SERIAL" ]; then
     CPU_SERIAL=$(cat /proc/sys/kernel/random/uuid)
 fi
 
-# 2. Hash the serial string to get base hex components
-# We extract 4 pairs (8 chars) to allow mathematical increments on the final bytes
+# 2. Extract interface names dynamically (handles eth0/eth1 or end0/end1 variants)
+IFACES=($(ip -o link show | awk -F': ' '$2 ~ /^(eth|end)[0-9]/ {print $2}' | sort))
+IFACE1="${IFACES[0]}"
+IFACE2="${IFACES[1]}"
+
+# Default fallbacks if the kernel hasn't fully populated the sysfs yet
+[ -z "$IFACE1" ] && IFACE1="eth0"
+[ -z "$IFACE2" ] && IFACE2="eth1"
+
+# 3. Hash the serial string to get base hex components (4 pairs / 8 chars)
 HASH_BASE=$(echo -n "$CPU_SERIAL" | md5sum | cut -c1-8 | sed 's/../&:/g')
 
-# Extract two distinct ending bytes mathematically from the hash to avoid collision
+# Extract two distinct ending bytes mathematically from the hash to avoid collisions
 BYTE5_DEC=$(( 16#$(echo -n "$CPU_SERIAL" | md5sum | cut -c9-10) ))
 BYTE6_DEC=$(( 16#$(echo -n "$CPU_SERIAL" | md5sum | cut -c11-12) ))
 
@@ -69,28 +77,27 @@ P1_B6=$(printf "%02X" $BYTE6_DEC)
 P2_B5=$(printf "%02X" $BYTE5_DEC)
 P2_B6=$(printf "%02X" $(( (BYTE6_DEC + 1) % 256 )))
 
-# 3. Construct local unicast MAC addresses (02: prefix)
+# Construct local unicast MAC addresses (02: prefix)
 MAC1="02:${HASH_BASE}${P1_B5}:${P1_B6}"
 MAC2="02:${HASH_BASE}${P2_B5}:${P2_B6}"
 
-# 4. Write to armbianEnv.txt (U-Boot parses ethaddr and eth1addr)
-echo "ethaddr=${MAC1}" >> "$ENV_FILE"
-echo "eth1addr=${MAC2}" >> "$ENV_FILE"
+# 4. Generate the global configuration block for NetworkManager
+mkdir -p /etc/NetworkManager/conf.d
+cat << EOF > "$CONF_FILE"
+[device-mac-port1]
+match-device=interface-name:${IFACE1}
+ethernet.cloned-mac-address=${MAC1}
 
-# 5. Fallback NetworkManager configuration for both profiles
-if [ -d "/etc/NetworkManager/system-connections" ]; then
-    # Find up to two existing wired connection profiles
-    MAPFILE=($(ls /etc/NetworkManager/system-connections/*.nmconnection 2>/dev/null | head -n 2))
+[device-mac-port2]
+match-device=interface-name:${IFACE2}
+ethernet.cloned-mac-address=${MAC2}
+EOF
 
-    # Configure Profile 1 if it exists
-    if [ -n "${MAPFILE[0]}" ]; then
-        sed -i '/\[ethernet\]/a cloned-mac-address='${MAC1}'' "${MAPFILE[0]}"
-    fi
-    # Configure Profile 2 if it exists
-    if [ -n "${MAPFILE[1]}" ]; then
-        sed -i '/\[ethernet\]/a cloned-mac-address='${MAC2}'' "${MAPFILE[1]}"
-    fi
-fi
+# Ensure appropriate permissions on configuration changes
+chmod 644 "$CONF_FILE"
+
+# Restart NetworkManager immediately to catch the new global assignments
+systemctl restart NetworkManager
 EOFgenerate
 
 chmod +x /usr/local/bin/generate-unique-mac.sh
@@ -98,8 +105,7 @@ chmod +x /usr/local/bin/generate-unique-mac.sh
 cat > /etc/systemd/system/mac-provisioner.service << 'EOFservice'
 [Unit]
 Description=Generate Unique Persistent MAC Address on First Boot
-ConditionPathExists=/boot/armbianEnv.txt
-Before=network.target network-pre.target NetworkManager.service
+Before=NetworkManager.service
 DefaultDependencies=no
 
 [Service]
