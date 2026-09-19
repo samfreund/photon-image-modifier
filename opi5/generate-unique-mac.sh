@@ -31,7 +31,14 @@ MAC1="02:${HASH_BASE}${P1_B5}:${P1_B6}"
 MAC2="02:${HASH_BASE}${P2_B5}:${P2_B6}"
 
 # 3. Dynamic Hardware Discovery (Scans physical wired interfaces)
-ETHERNET_INTERFACES=($(ls /sys/class/net | grep -E '^(eth|end)[0-9]' | sort))
+mapfile -t ETHERNET_INTERFACES < <(
+    for interface_path in /sys/class/net/*; do
+        interface_name=${interface_path##*/}
+        if [[ $interface_name =~ ^(eth|end)[0-9]+$ ]] && [ -e "$interface_path/device" ]; then
+            printf '%s\n' "$interface_name"
+        fi
+    done | sort -V
+)
 
 # 4. REMOVE ARMBIAN DEFAULTS (Crucial step to prevent rule overrides)
 # Wipes out '10-dhcp-all-interfaces.yaml' or similar default templates in the directory
